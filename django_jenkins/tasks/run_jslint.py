@@ -50,7 +50,7 @@ class Task(BaseTask):
             output_dir = options['output_dir']
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
-            self.output = open(os.path.join(output_dir, 'jslint.xml'), 'w')
+            self.output = open(os.path.join(output_dir, 'jshint.xml'), 'w')
         else:
             self.output = sys.stdout
 
