@@ -36,21 +36,12 @@ if (typeof process !== 'undefined') {
 }
 
 
-JSLINT(fileContent, {
-    white: true,
-    onevar: true,
-    undef: true,
-    newcap: true,
-    nomen: true,
-    regexp: true,
-    plusplus: true,
-    bitwise: true,
-    devel: true,
-    maxerr: 50,
+JSHINT(fileContent, {
     browser: true,
+    jquery: true,
     indent: 4
 });
-var report = JSLINT.data();
+var report = JSHINT.data();
 
 function escapeSpecialCharacters(str) {
     if (!str || str.constructor !== String) {

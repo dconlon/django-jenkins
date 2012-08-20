@@ -44,7 +44,7 @@ class Task(BaseTask):
 
         self.implementation = options['jslint_implementation']
         if not self.implementation:
-            self.implementation = os.path.join(root_dir, 'jslint', 'jslint.js')
+            self.implementation = os.path.join(root_dir, 'jshint', 'jshint.js')
 
         if self.to_file:
             output_dir = options['output_dir']
