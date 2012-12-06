@@ -2,9 +2,10 @@
 import os
 import subprocess
 import sys
+import fnmatch
 from optparse import make_option
 from django.conf import settings
-from django_jenkins.functions import relpath, CalledProcessError, find_first_existing_executable
+from django_jenkins.functions import CalledProcessError, find_first_existing_executable
 from django_jenkins.tasks import BaseTask, get_apps_locations
 
 
@@ -64,12 +65,12 @@ class Task(BaseTask):
         self.exclude = options['csslint_exclude'].split(',')
 
     def teardown_test_environment(self, **kwargs):
-        files = [relpath(path) for path in self.static_files_iterator()]
+        files = [path for path in self.static_files_iterator()]
         if self.to_file:
             fmt = 'lint-xml'
         else:
             fmt = 'text'
-
+            
         if files:
             cmd = [self.interpreter, self.implementation, '--format=%s' % fmt] + files
 
@@ -79,7 +80,7 @@ class Task(BaseTask):
             if retcode not in [0, 1]: # normal csslint return codes
                 raise CalledProcessError(retcode, cmd, output=output + '\n' + err)
 
-            self.output.write(output)
+            self.output.write(output.decode('utf-8'))
         elif self.to_file:
             self.output.write('<?xml version="1.0" encoding="utf-8"?><lint></lint>')
 
@@ -97,6 +98,12 @@ class Task(BaseTask):
                 for location in list(settings.STATICFILES_DIRS):
                     if path.startswith(location):
                         return True
+            return False
+            
+        def is_excluded(path):
+            for pattern in self.exclude:
+                if fnmatch.fnmatchcase(path, pattern):
+                    return True
             return False
 
         if hasattr(settings, 'CSSLINT_CHECKED_FILES'):
@@ -117,6 +124,7 @@ class Task(BaseTask):
             for location in locations:
                 for dirpath, dirnames, filenames in os.walk(os.path.join(location, 'static')):
                     for filename in filenames:
-                        if filename.endswith('.css') and in_tested_locations(os.path.join(dirpath, filename)):
-                            yield os.path.join(dirpath, filename)
+                        path = os.path.join(dirpath, filename)
+                        if filename.endswith('.css') and in_tested_locations(path) and not is_excluded(path):
+                            yield path
 

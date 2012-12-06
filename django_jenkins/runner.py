@@ -7,9 +7,15 @@ from xml.sax.saxutils import XMLGenerator
 from xml.sax.xmlreader import AttributesImpl
 from django.conf import settings
 from django.test.simple import DjangoTestSuiteRunner, reorder_suite
-from django.utils.unittest import TestSuite, TestCase, TextTestResult, TextTestRunner
+from django.test.testcases import TestCase
+from django.utils.unittest import TestSuite, TextTestResult, TextTestRunner
 from django_jenkins import signals
 from django_jenkins.functions import total_seconds
+
+try:
+    from django.utils.encoding import smart_text
+except ImportError:
+    from django.utils.encoding import smart_unicode as smart_text
 
 
 STDOUT_LINE = '\nStdout:\n%s'
@@ -31,7 +37,7 @@ class TestInfo(object):
     def __init__(self, **kwargs):
         for slot_name in self.__slots__:
             setattr(self, slot_name, None)
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             setattr(self, key, value)
 
 
@@ -171,7 +177,10 @@ class XMLTestResult(TextTestResult):
         """
         self.buffer = False
 
-        with open(os.path.join(output_dir, 'junit.xml'), 'w') as output:            
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        with open(os.path.join(output_dir, 'junit.xml'), 'w') as output:
             document = XMLGenerator(output, 'utf-8')
             document.startDocument()
             document.startElement('testsuites', AttributesImpl({}))
@@ -189,13 +198,13 @@ class XMLTestResult(TextTestResult):
 
                     if test_info.result == TestInfo.RESULT.ERROR:
                         document.startElement('error', AttributesImpl({
-                            'message' : unicode(test_info.err[1])
+                            'message' : smart_text(test_info.err[1])
                         }))
                         document.characters(self._exc_info_to_string(test_info.err, test_info.test_method))
                         document.endElement('error')
                     elif test_info.result == TestInfo.RESULT.FAILURE:
                         document.startElement('failure', AttributesImpl({
-                            'message' : unicode(test_info.err[1])
+                            'message' : smart_text(test_info.err[1])
                         }))
                         document.characters(self._exc_info_to_string(test_info.err, test_info.test_method))
                         document.endElement('failure')
@@ -256,7 +265,10 @@ class CITestSuiteRunner(DjangoTestSuiteRunner):
 
     def run_suite(self, suite, **kwargs):
         signals.before_suite_run.send(sender=self)
-        result = TextTestRunner(buffer=True, resultclass=XMLTestResult).run(suite)
+        result = TextTestRunner(buffer=True,
+                resultclass=XMLTestResult,
+                verbosity=self.verbosity
+                ).run(suite)
         if self.with_reports:
             result.dump_xml(self.output_dir)
         signals.after_suite_run.send(sender=self)
